@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #4e9eff, #0055ff);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 80%;
+            max-width: 1000px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-x: auto;
+        }
+
+        input[type="file"] {
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        td {
+            text-align: left;
+        }
+
+        .export-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            margin-right: 10px;
+        }
+
+        .export-btn:hover {
+            background-color: #45a049;
+        }
+
+        
+
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 style="text-align: center; color: #333;">CSV Viewer</h2>
+        <input type="file" id="csvFileInput" accept=".csv">
+        <div id="csvData"></div>
+        <button class="export-btn" id="exportToExcel">Exportar a Excel</button>
+        <button class="export-btn" id="exportToJSON">Exportar a JSON</button>
+        <button class="export-btn" id="exportToXML">Exportar a XML</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script>
+        document.getElementById('csvFileInput').addEventListener('change', handleFileSelect, false);
+        document.getElementById('exportToExcel').addEventListener('click', exportToExcel);
+        document.getElementById('exportToPDF').addEventListener('click', exportToPDF);
+        document.getElementById('exportToJSON').addEventListener('click', exportToJSON);
+        document.getElementById('exportToXML').addEventListener('click', exportToXML);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const csv = event.target.result;
+                const data = csv.split('\n').map(row => row.split(','));
+                displayData(data);
+            };
+
+            reader.readAsText(file);
+        }
+
+        function displayData(data) {
+            const table = document.createElement('table');
+
+            // Add header row
+            const headerRow = table.insertRow();
+            data[0].forEach(cellData => {
+                const th = document.createElement('th');
+                th.textContent = cellData;
+                headerRow.appendChild(th);
+            });
+
+            // Add data rows
+            for (let i = 1; i < data.length; i++) {
+                const rowData = data[i];
+                const row = table.insertRow();
+                rowData.forEach(cellData => {
+                    const cell = row.insertCell();
+                    cell.textContent = cellData;
+                });
+            }
+
+            const csvDataDiv = document.getElementById('csvData');
+            csvDataDiv.innerHTML = '';
+            csvDataDiv.appendChild(table);
+        }
+
+        function exportToExcel() {
+            const table = document.querySelector('table');
+            const htmlTable = table.outerHTML.replace(/ /g, '%20');
+            const excelData = 'data:application/vnd.ms-excel;charset=utf-8,' + encodeURIComponent(htmlTable);
+            const link = document.createElement('a');
+            link.href = excelData;
+            link.download = 'data.xls';
+            link.click();
+        }
+
+        function exportToPDF() {
+            const doc = new jsPDF();
+            doc.autoTable({ html: 'table' });
+            doc.save('data.pdf');
+        }
+
+        function exportToJSON() {
+            const table = document.querySelector('table');
+            const data = Array.from(table.rows).slice(1).map(row => {
+                const rowData = {};
+                Array.from(row.cells).forEach((cell, index) => {
+                    const header = table.rows[0].cells[index].textContent;
+                    rowData[header] = cell.textContent;
+                });
+                return rowData;
+            });
+            const jsonData = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'data.json';
+            link.click();
+        }
+
+        function exportToXML() {
+            const table = document.querySelector('table');
+            let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<rows>\n';
+            Array.from(table.rows).slice(1).forEach(row => {
+                xml += '  <row>\n';
+                Array.from(row.cells).forEach((cell, index) => {
+                    const header = table.rows[0].cells[index].textContent;
+                    xml += `    <${header}>${cell.textContent}</${header}>\n`;
+                });
+                xml += '  </row>\n';
+            });
+            xml += '</rows>';
+            const blob = new Blob([xml], { type: 'application/xml' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'data.xml';
+            link.click();
+        }
+    </script>
+</body>
+</html>
